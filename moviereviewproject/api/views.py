@@ -1,3 +1,4 @@
+from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Movie, Review
 from .serializers import MovieSerializer, ReviewSerializer
@@ -14,3 +15,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 def home(request):
     return JsonResponse({"message": "Welcome to the Movie Review API"})
+
+
+
+def home(request):
+    return render(request, "api/home.html")
