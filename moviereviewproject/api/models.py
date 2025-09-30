@@ -2,9 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Movie(models.Model):
-    title = models.CharField(max_length=200)
-    release_year = models.IntegerField(default=2025)
-    description = models.TextField(blank=True)
+    title = models.CharField(max_length=255)
+    release_year = models.DateField()
+    image_url = models.URLField(max_length=500, blank=True, null=True)  # Optional image
 
     def __str__(self):
         return self.title
@@ -19,3 +19,4 @@ class Review(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.movie.title} ({self.rating})"
 
+    

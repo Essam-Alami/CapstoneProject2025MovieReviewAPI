@@ -7,7 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('', RedirectView.as_view(url='/api/', permanent=False)),  # redirect root to /api/
-    path('', home), 
+    path('', home, name='home'),  # Home view
 ]
 
 

@@ -3,7 +3,9 @@ from rest_framework import viewsets
 from .models import Movie, Review
 from .serializers import MovieSerializer, ReviewSerializer
 from django.http import JsonResponse
-from .models import Movie
+from .models import Movie, Review
+import requests
+from .models import Movie, Review
 
 class MovieViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
@@ -15,10 +17,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 def home(request):
-    return render(request, "api/home.html")
-
-
-def home(request):
-    movies = Movie.objects.all()  # fetch all movies from DB
-    return render(request, "api/home.html", {"movies": movies})
-
+    movies = Movie.objects.all()
+    reviews_list = Review.objects.all()
+    context = {
+        'movies': movies,
+        'reviews': reviews_list
+    }
+    return render(request, 'home.html', context)
