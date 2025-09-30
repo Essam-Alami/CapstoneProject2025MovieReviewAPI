@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 class Movie(models.Model):
     title = models.CharField(max_length=200)
-    release_year = models.IntegerField()
+    release_year = models.IntegerField(default=2025)
     description = models.TextField(blank=True)
 
     def __str__(self):
