@@ -2,9 +2,41 @@
 <html>
 <head>
     <title>Movie Review API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f8f8f8;
+        }
+        h1 {
+            color: #333;
+        }
+        a {
+            text-decoration: none;
+            color: #007BFF;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Movie Review API</h1>
-    <p>Use <a href="/api/">/api/</a> to access the API endpoints.</p>
+    <div class="container">
+        <h1>Welcome to the Movie Review API</h1>
+        <p>Use the following links to access the API endpoints:</p>
+        <ul>
+            <li><a href="/api/movies/">Movies API</a></li>
+            <li><a href="/api/reviews/">Reviews API</a></li>
+        </ul>
+        <p>Visit <a href="/admin/">Admin Panel</a> to manage data.</p>
+    </div>
 </body>
 </html>
+
