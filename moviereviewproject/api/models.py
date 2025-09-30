@@ -5,6 +5,7 @@ class Movie(models.Model):
     title = models.CharField(max_length=255)
     release_year = models.DateField()
     image_url = models.URLField(max_length=500, blank=True, null=True)  # Optional image
+    description = models.TextField(blank=True, null=True)  # Optional description
 
     def __str__(self):
         return self.title

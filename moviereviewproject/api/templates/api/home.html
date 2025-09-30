@@ -4,14 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Movie Dashboard</title>
+    <center><h2>Welcome to the Movie Review Dashboard!</h2></center>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            font-family: Arial, 'Franklin Gothic Medium', sans-serif;
+            background: #f1c9c9;
             margin: 0;
             padding: 20px;
         }
-        h1 {
+        h1, h2, h3 {
             text-align: center;
         }
         .movie-card {
@@ -20,12 +21,16 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             padding: 15px;
             margin: 15px auto;
-            max-width: 600px;
-        }
-        .movie-header {
+            max-width: 800px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: row;
+            gap: 20px;
+        }
+        .movie-info {
+            flex: 1;
+        }
+        .movie-description {
+            margin-top: 10px;
         }
         .reviews {
             margin-top: 10px;
@@ -37,12 +42,18 @@
         }
         form {
             margin-top: 10px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
         }
         input, textarea, button {
             width: 100%;
             margin-top: 5px;
             padding: 8px;
             box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
         }
         button {
             background: #007BFF;
@@ -54,10 +65,47 @@
         button:hover {
             background: #0056b3;
         }
+        .auth-form-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .auth-form {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        .star-rating {
+            color: #FFD700; /* gold stars */
+            font-size: 1.2em;
+        }
     </style>
 </head>
 <body>
     <h1>Movie Dashboard</h1>
+
+    <div id="auth-section" class="auth-form-container">
+        <!-- Signup Form -->
+        <form id="signup-form" class="auth-form">
+            <h3>Sign Up</h3>
+            <input type="text" id="signup-username" placeholder="Username" required>
+            <input type="password" id="signup-password" placeholder="Password" required>
+            <button type="submit">Sign Up</button>
+        </form>
+
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form">
+            <h3>Log In</h3>
+            <input type="text" id="login-username" placeholder="Username" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button type="submit">Log In</button>
+        </form>
+    </div>
+
+    <p id="auth-status" style="text-align:center;">Not logged in</p>
 
     <div id="movies-container">
         <!-- Movie cards will be inserted here -->
@@ -66,8 +114,18 @@
     <script>
         const moviesContainer = document.getElementById('movies-container');
         const csrfToken = '{{ csrf_token }}';
+        let accessToken = null;
+       
+        function renderStars(rating) {
+    if (!rating) return 'No rating';
+    let fullStars = Math.floor(rating);
+    let halfStar = rating % 1 >= 0.5 ? 1 : 0;
+    let stars = '★'.repeat(fullStars) + (halfStar ? '½' : '');
+    stars += '☆'.repeat(5 - fullStars - halfStar);
+    return stars;
+}
 
-        // Load movies and reviews
+        // --- Load movies and reviews ---
         async function loadMovies() {
             moviesContainer.innerHTML = '';
             try {
@@ -78,24 +136,28 @@
                     const card = document.createElement('div');
                     card.className = 'movie-card';
                     card.innerHTML = `
-                        <div class="movie-header">
-                            <h2>${movie.title}</h2>
-                            <span>Released: ${new Date(movie.release_year).getFullYear()}</span>
+                        <div class="movie-info">
+                            <div class="movie-header">
+                                <h2>${movie.title}</h2>
+                                <span>Released: ${new Date(movie.release_year).getFullYear()}</span>
+                            </div>
+                            <p class="movie-description" contenteditable="true" data-movie-id="${movie.id}">
+                                ${movie.description || 'No description available.'}
+                            </p>
+                            <div class="reviews" id="reviews-${movie.id}">
+                                <h3>Reviews:</h3>
+                                <p>Loading...</p>
+                            </div>
+                            <form data-movie-id="${movie.id}" class="review-form">
+                                <h4>Add Review</h4>
+                                <input type="number" name="rating" placeholder="Rating 1-5" step="0.1" min="1" max="5" required>
+                                <textarea name="comment" placeholder="Your comment" required></textarea>
+                                <button type="submit">Submit Review</button>
+                            </form>
                         </div>
-                        <div class="reviews" id="reviews-${movie.id}">
-                            <h3>Reviews:</h3>
-                            <p>Loading...</p>
-                        </div>
-                        <form data-movie-id="${movie.id}" class="review-form">
-                            <h4>Add Review</h4>
-                            <input type="number" name="rating" placeholder="Rating" step="0.1" required>
-                            <textarea name="comment" placeholder="Your comment" required></textarea>
-                            <button type="submit">Submit Review</button>
-                        </form>
                     `;
                     moviesContainer.appendChild(card);
 
-                    // Load reviews for this movie
                     loadReviews(movie.id);
                 }
 
@@ -107,18 +169,16 @@
                         const rating = form.rating.value;
                         const comment = form.comment.value;
 
+                        if (!accessToken) { alert("You must be logged in."); return; }
+
                         try {
                             const response = await fetch('/api/reviews/', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'X-CSRFToken': csrfToken
+                                    'Authorization': 'Bearer ' + accessToken
                                 },
-                                body: JSON.stringify({
-                                    movie: movieId,
-                                    rating: rating,
-                                    comment: comment
-                                })
+                                body: JSON.stringify({ movie: movieId, rating, comment })
                             });
 
                             if (response.ok) {
@@ -128,18 +188,35 @@
                                 const errorData = await response.json();
                                 alert('Error: ' + JSON.stringify(errorData));
                             }
-                        } catch (err) {
-                            console.error(err);
-                        }
+                        } catch (err) { console.error(err); }
                     });
                 });
 
-            } catch (err) {
-                console.error(err);
-            }
+                // Make description editable
+                document.querySelectorAll('.movie-description').forEach(desc => {
+                    desc.addEventListener('blur', async () => {
+                        const movieId = desc.getAttribute('data-movie-id');
+                        const newDesc = desc.innerText;
+
+                        if (!accessToken) { alert("You must be logged in to edit descriptions."); return; }
+
+                        try {
+                            const res = await fetch(`/api/movies/${movieId}/`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + accessToken
+                                },
+                                body: JSON.stringify({ description: newDesc })
+                            });
+                            if (!res.ok) alert("Failed to update description");
+                        } catch (err) { console.error(err); }
+                    });
+                });
+
+            } catch (err) { console.error(err); }
         }
 
-        // Load reviews for a specific movie
         async function loadReviews(movieId) {
             const reviewsContainer = document.getElementById(`reviews-${movieId}`);
             try {
@@ -148,12 +225,12 @@
                 if (reviews.length === 0) {
                     reviewsContainer.innerHTML = '<p>No reviews yet.</p>';
                 } else {
-                    reviewsContainer.innerHTML = reviews.map(r => `
-                        <div class="review-item">
-                            <strong>Rating:</strong> ${r.rating} <br>
-                            <p>${r.comment}</p>
-                        </div>
-                    `).join('');
+                   reviewsContainer.innerHTML = reviews.map(r => `
+                      <div class="review-item">
+                          <strong>Rating:</strong> <span class="star-rating">${renderStars(r.rating)}</span>
+                          <p>${r.comment}</p>
+                     </div>
+                  `).join('');
                 }
             } catch (err) {
                 reviewsContainer.innerHTML = '<p>Error loading reviews.</p>';
@@ -161,11 +238,51 @@
             }
         }
 
-        // Initialize dashboard
+        // --- Signup handler ---
+        document.getElementById("signup-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("signup-username").value;
+            const password = document.getElementById("signup-password").value;
+
+            try {
+                const res = await fetch("/api/signup/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) { alert("Signup successful! Now log in."); }
+                else { const data = await res.json(); alert("Signup failed: " + JSON.stringify(data)); }
+            } catch (err) { console.error(err); alert("Error during signup"); }
+        });
+
+        // --- Login handler ---
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("login-username").value;
+            const password = document.getElementById("login-password").value;
+
+            try {
+                const res = await fetch("/api/token/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    accessToken = data.access;
+                    document.getElementById("auth-status").innerText = `Logged in as ${username}`;
+                    alert("Login successful!");
+                } else { alert("Login failed. Check credentials."); }
+            } catch (err) { console.error(err); alert("Error during login"); }
+        });
+
+        // Initialize
         loadMovies();
     </script>
 </body>
 </html>
+
+
 
 
 
