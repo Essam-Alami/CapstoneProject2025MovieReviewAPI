@@ -13,9 +13,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
 
-def home(request):
-    return JsonResponse({"message": "Welcome to the Movie Review API"})
-
 
 def home(request):
     return render(request, "api/home.html")
