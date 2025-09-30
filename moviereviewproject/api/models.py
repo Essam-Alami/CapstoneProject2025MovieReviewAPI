@@ -12,7 +12,7 @@ class Movie(models.Model):
 class Review(models.Model):
     movie = models.ForeignKey(Movie, related_name="reviews", on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    rating = models.FloatField()  # 1–5 stars
+    rating = models.IntegerField()  # 1–5 stars
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

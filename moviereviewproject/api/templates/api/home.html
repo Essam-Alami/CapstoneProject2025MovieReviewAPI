@@ -1,73 +1,172 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Movie Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
         }
         .movie-card {
-            margin-bottom: 2rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin: 15px auto;
+            max-width: 600px;
         }
-        .movie-image {
-            max-height: 300px;
-            object-fit: cover;
+        .movie-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .star-rating {
-            color: #ffc107;
+        .reviews {
+            margin-top: 10px;
+            padding-left: 10px;
+        }
+        .review-item {
+            border-bottom: 1px solid #ddd;
+            padding: 5px 0;
+        }
+        form {
+            margin-top: 10px;
+        }
+        input, textarea, button {
+            width: 100%;
+            margin-top: 5px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
         }
     </style>
 </head>
 <body>
-<div class="container my-5">
-    <h1 class="mb-4 text-center">Movie Dashboard</h1>
+    <h1>Movie Dashboard</h1>
 
-    <div class="row">
-        {% for movie in movies %}
-        <div class="col-md-4">
-            <div class="card movie-card shadow-sm">
-                {% if movie.image_url %}
-                <img src="{{ movie.image_url }}" class="card-img-top movie-image" alt="{{ movie.title }}">
-                {% else %}
-                <img src="https://via.placeholder.com/300x300?text=No+Image" class="card-img-top movie-image" alt="{{ movie.title }}">
-                {% endif %}
-                <div class="card-body">
-                    <h5 class="card-title">{{ movie.title }}</h5>
-                    <p class="card-text"><strong>Release Year:</strong> {{ movie.release_year|date:"Y" }}</p>
-                    <p class="card-text"><strong>Average Rating:</strong> 
-                        {% if movie.avg_rating %}
-                            {{ movie.avg_rating|floatformat:1 }} / 5
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </p>
-                    <a href="{% url 'movie-detail' movie.id %}" class="btn btn-primary">View Details</a>
-                </div>
-            </div>
-
-            <!-- Reviews for this movie -->
-            <div class="mt-3">
-                <h6>Reviews:</h6>
-                {% for review in movie.reviews.all %}
-                    <div class="card mb-2">
-                        <div class="card-body">
-                            <p class="mb-1"><strong>Rating:</strong> {{ review.rating }}</p>
-                            <p class="mb-1"><strong>Comment:</strong> {{ review.comment }}</p>
-                            <p class="mb-0"><strong>User:</strong> {{ review.user.username }}</p>
-                        </div>
-                    </div>
-                {% empty %}
-                    <p>No reviews yet.</p>
-                {% endfor %}
-            </div>
-
-        </div>
-        {% endfor %}
+    <div id="movies-container">
+        <!-- Movie cards will be inserted here -->
     </div>
-</div>
+
+    <script>
+        const moviesContainer = document.getElementById('movies-container');
+        const csrfToken = '{{ csrf_token }}';
+
+        // Load movies and reviews
+        async function loadMovies() {
+            moviesContainer.innerHTML = '';
+            try {
+                const res = await fetch('/api/movies/');
+                const movies = await res.json();
+
+                for (const movie of movies) {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.innerHTML = `
+                        <div class="movie-header">
+                            <h2>${movie.title}</h2>
+                            <span>Released: ${new Date(movie.release_year).getFullYear()}</span>
+                        </div>
+                        <div class="reviews" id="reviews-${movie.id}">
+                            <h3>Reviews:</h3>
+                            <p>Loading...</p>
+                        </div>
+                        <form data-movie-id="${movie.id}" class="review-form">
+                            <h4>Add Review</h4>
+                            <input type="number" name="rating" placeholder="Rating" step="0.1" required>
+                            <textarea name="comment" placeholder="Your comment" required></textarea>
+                            <button type="submit">Submit Review</button>
+                        </form>
+                    `;
+                    moviesContainer.appendChild(card);
+
+                    // Load reviews for this movie
+                    loadReviews(movie.id);
+                }
+
+                // Add event listeners to review forms
+                document.querySelectorAll('.review-form').forEach(form => {
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const movieId = form.getAttribute('data-movie-id');
+                        const rating = form.rating.value;
+                        const comment = form.comment.value;
+
+                        try {
+                            const response = await fetch('/api/reviews/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify({
+                                    movie: movieId,
+                                    rating: rating,
+                                    comment: comment
+                                })
+                            });
+
+                            if (response.ok) {
+                                form.reset();
+                                loadReviews(movieId);
+                            } else {
+                                const errorData = await response.json();
+                                alert('Error: ' + JSON.stringify(errorData));
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    });
+                });
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Load reviews for a specific movie
+        async function loadReviews(movieId) {
+            const reviewsContainer = document.getElementById(`reviews-${movieId}`);
+            try {
+                const res = await fetch(`/api/reviews/?movie=${movieId}`);
+                const reviews = await res.json();
+                if (reviews.length === 0) {
+                    reviewsContainer.innerHTML = '<p>No reviews yet.</p>';
+                } else {
+                    reviewsContainer.innerHTML = reviews.map(r => `
+                        <div class="review-item">
+                            <strong>Rating:</strong> ${r.rating} <br>
+                            <p>${r.comment}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                reviewsContainer.innerHTML = '<p>Error loading reviews.</p>';
+                console.error(err);
+            }
+        }
+
+        // Initialize dashboard
+        loadMovies();
+    </script>
 </body>
 </html>
+
+
 
 
